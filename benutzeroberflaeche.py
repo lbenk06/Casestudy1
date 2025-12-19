@@ -3,7 +3,7 @@ from datenbank import *
 from datetime import datetime
 from streamlit_autorefresh import st_autorefresh
 
-# Seite alle 10 Sekunden automatisch neu laden
+# Auto-Refresh alle 10 Sekunden
 st_autorefresh(interval=10 * 1000, key="auto_refresh")
 
 st.set_page_config(page_title="Gerätenetzwerk – Admin", layout="wide")
@@ -44,7 +44,7 @@ if st.button("Gerät hinzufügen"):
     create_device(device_name, device_type)
     st.success(f"Gerät '{device_name}' hinzugefügt")
 
-# Geräteliste mit Aktionen und Timer
+# Geräteliste mit Aktionen
 st.subheader("Geräteliste")
 devices = get_devices()
 users_list = [u["name"] for u in get_users()]
@@ -52,7 +52,7 @@ users_list = [u["name"] for u in get_users()]
 for device in devices:
     col1, col2, col3, col4, col5, col6 = st.columns([2, 1, 2, 2, 2, 3])
     
-    # Statusfarbe
+    # Statusfarben
     if device["status"] == "verfügbar":
         status_display = "🟢 verfügbar"
     elif device["status"] == "reserviert":
@@ -72,20 +72,21 @@ for device in devices:
         if res:
             end_time = datetime.strptime(res["end_time"], "%Y-%m-%d %H:%M:%S")
             remaining = end_time - datetime.now()
-            if remaining.total_seconds() < 0:
-                remaining_str = "abgelaufen"
-            else:
-                minutes = remaining.seconds // 60
-                remaining_str = f"{minutes} Min übrig"
-            col3.write(f"{current_user} (bis {end_time.strftime('%H:%M %d.%m')}, {remaining_str})")
+            minutes = max(0, remaining.seconds // 60)
+            col3.write(f"{current_user} (bis {end_time.strftime('%H:%M %d.%m')}, {minutes} Min übrig)")
         else:
             col3.write(current_user)
     else:
         col3.write(current_user)
 
-    # Wartung
+    # Wartung setzen
     if col4.button("Wartung", key=f"maint_{device.doc_id}"):
         set_device_status(device.doc_id, "Wartung")
+
+    # Gerät freigeben (Reserviert oder Wartung)
+    if device["status"] in ["reserviert", "Wartung"]:
+        if col5.button("Freigeben", key=f"free_{device.doc_id}"):
+            release_device(device.doc_id)
 
     # Reservieren
     if device["status"] == "verfügbar" and users_list:
@@ -93,11 +94,6 @@ for device in devices:
         duration = col5.number_input("Dauer (Minuten)", min_value=1, value=60, key=f"dur_{device.doc_id}")
         if col5.button("Reservieren", key=f"res_{device.doc_id}"):
             reserve_device(device.doc_id, user, duration)
-
-    # Manuelles Freigeben
-    if device["status"] == "reserviert":
-        if col5.button("Freigeben", key=f"free_{device.doc_id}"):
-            release_device(device.doc_id)
 
     # Gerät löschen
     if col6.button("Löschen", key=f"del_device_{device.doc_id}"):
