@@ -31,7 +31,6 @@ class Device(Serializable):
             maintenance_cost=data.get('maintenance_cost', 0.0),
             status=data.get('status', 'available'),
             end_of_life=data.get('end_of_life'),
-            first_maintenance=data.get('first_maintenance'),
             next_maintenance=data.get('next_maintenance'),
             creation_date=data.get('creation_date'),
             last_update=data.get('last_update')
