@@ -107,11 +107,15 @@ elif page == "Geräte-Verwaltung":
 
 
 
-#3. reservierungssyste,
+#3. reservierungssystem
 elif page == "Reservierungssystem":
     st.header("📅 Reservierungssystem")
     # Hier kommt eure Logik zum Ein/Austragen rein [cite: 38]
     st.info("Hier können zukünftige Reservierungen (First-Come-First-Serve) verwaltet werden.")
+
+
+
+
 
 #4. wartungs-management
 elif page == "Wartungs-Management":
