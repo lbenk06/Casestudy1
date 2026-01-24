@@ -3,6 +3,8 @@ from datetime import datetime
 from devices_inheritance import Device
 from users_inheritance import User
 from reservations import Reservation
+from reservation_service import ReservationService
+
 
 
 st.set_page_config(page_title="Geräteverwaltung am MCI 4", layout="wide")
@@ -110,9 +112,58 @@ elif page == "Geräte-Verwaltung":
 #3. reservierungssystem
 elif page == "Reservierungssystem":
     st.header("📅 Reservierungssystem")
-    # Hier kommt eure Logik zum Ein/Austragen rein [cite: 38]
-    st.info("Hier können zukünftige Reservierungen (First-Come-First-Serve) verwaltet werden.")
+    
+    res_service=ReservationService()
+    res_service.clean_expired_reservations()
 
+    devices=Device.find_all()
+    users=User.find_all()
+
+    dev_list=[d.id for d in devices] if devices else []
+    user_list=[u.id for u in users] if users else []
+
+    if not dev_list or not user_list:
+        st.warning("Bitte zuerst Nutzer und Geräte anlegen.")
+    else:
+        with st.form("reservation_form"):
+            st.subheader("Neue Reservierung anlegen")
+            selected_device = st.selectbox("Gerät auswählen", options=dev_list)
+            selected_user = st.selectbox("Nutzer auswählen", options=user_list)
+
+            col1, col2 =st.columns(2)
+
+            start_date= col1.date_input("Startdatum")
+            start_time= col1.time_input("Startzeit", value=datetime.strptime("08:00", "%H:%M").time())
+            end_date= col2.date_input("Enddatum")
+            end_time= col2.time_input("Endzeit", value=datetime.strptime("17:00", "%H:%M").time())
+
+            if st.form_submit_button("Reservierung speichern"):
+
+                # Kombiniere Datum und Zeit zu datetime-Objekten
+                start_datetime = datetime.combine(start_date, start_time)
+                end_datetime = datetime.combine(end_date, end_time)
+
+                if end_datetime <= start_datetime:
+                    st.error("Das Enddatum/-zeit muss nach dem Startdatum/-zeit liegen.")
+                else:
+                    try:
+                        res_service.create_reservation(selected_user, selected_device, start_datetime, end_datetime)
+                        st.success(f"Reservierung für Gerät {selected_device} durch Nutzer {selected_user} gespeichert!")
+                    except ValueError as ve:
+                        st.error(f"Fehler bei der Reservierung: {ve}")
+    st.divider()
+    st.subheader("Aktuelle Reservierungen:")
+    all_reservations=res_service.find_all_reservations()
+
+    if all_reservations:
+        for r in all_reservations:
+            st.write(f"- Gerät **{r.device_id}** reserviert von **{r.user_id}**: {r.start_date} bis {r.end_date}")
+            if st.button("Löschen", key=f"delete_res_{r.id}"):
+                r.delete()
+                st.success(f"Reservierung für Gerät {r.device_id} gelöscht!")
+                st.rerun()
+    else:
+        st.info("Noch keine Reservierungen vorhanden.")    
 
 
 

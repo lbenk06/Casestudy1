@@ -63,6 +63,16 @@ class ReservationService():
         reservation.store_data()
         cls.find_all_reservations()
         return True
+    
+    @classmethod
+    def clean_expired_reservations(cls):
+        res=cls.find_all_reservations()
+        now = datetime.now()
+        for reservation in res:
+            if reservation.end_date < now:
+                reservation.delete()
+        cls.find_all_reservations()
+
 
 
 if __name__ == "__main__":

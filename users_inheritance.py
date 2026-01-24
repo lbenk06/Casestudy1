@@ -19,23 +19,3 @@ class User(Serializable):
     def __str__(self):
         return f"User: {self.name} ({self.id})"
 
-if __name__ == "__main__":
-    # Create a device
-    user1 = User("one@mci.edu", "User One",)
-    user2 = User("two@mci.edu", "User Two", ) 
-    user3 = User( "three@mci.edu", "User Three") 
-    user1.store_data()
-    user2.store_data()
-    user3.store_data()
-    user4 = User("User Four", "four@mci.edu") 
-    user4.store_data()
-
-    loaded_user = User.find_by_attribute("id", "one@mci.edu")
-    if loaded_user:
-        print(f"Loaded: {loaded_user}")
-    else:
-        print("User not found.")
-
-    all_users = User.find_all()
-    for user in all_users:
-        print(user)
