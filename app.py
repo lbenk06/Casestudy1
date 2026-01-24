@@ -114,7 +114,7 @@ elif page == "Reservierungssystem":
     st.header("📅 Reservierungssystem")
     
     res_service=ReservationService()
-    res_service.clean_expired_reservations()
+    res_service.clean_expired_reservations()s
 
     devices=Device.find_all()
     users=User.find_all()

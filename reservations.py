@@ -25,20 +25,3 @@ class Reservation(Serializable):
     def __str__(self):
         return f"Reservation: from {self.user_id} for {self.device_id}: {self.start_date} - {self.end_date}"
 
-if __name__ == "__main__":
-    # Create a device
-    reservation1 = Reservation("one@mci.edu", "Device1", "2021-01-01 00:00:00", "2021-01-02 00:00:00")
-    reservation2 = Reservation("one@mci.edu", "Device2", "2021-01-01 00:00:00", "2021-01-02 00:00:00")
-    reservation3 = Reservation("two@mci.edu", "Device2", "2021-01-02 00:00:00", "2021-01-03 00:00:00")
-
-
-    reservation1.store_data()
-    reservation2.store_data()
-    reservation3.store_data()
-
-    loaded_reservations = Reservation.find_by_attribute("device_id", "Device2", num_to_return=-1)
-    if loaded_reservations:
-        for loaded_reservation in loaded_reservations:
-            print(f"Loaded: {loaded_reservation}")
-    else:
-        print("Reservation not found.")

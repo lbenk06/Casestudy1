@@ -56,6 +56,14 @@ class ReservationService():
         if isinstance(end_date, str):
             end_date = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S")
 
+        jetzt = datetime.now()
+        if start_date < jetzt:
+            raise ValueError("Das Startdatum darf nicht in der Vergangenheit liegen.") # [cite: 98, 99]
+
+        if end_date <= start_date:
+            raise ValueError("Das Enddatum muss nach dem Startdatum liegen.") # [cite: 98, 99]
+
+        # Prüfung auf Konflikte (First-come-first-serve)
         if cls.check_conflict(device_id, start_date, end_date):
             raise ValueError("Reservation conflict detected")
         
@@ -64,21 +72,29 @@ class ReservationService():
         cls.find_all_reservations()
         return True
     
+        
+      
+    
+    
     @classmethod
+        
     def clean_expired_reservations(cls):
-        res=cls.find_all_reservations()
+        res = cls.find_all_reservations()
         now = datetime.now()
+        
         for reservation in res:
-            if reservation.end_date < now:
+            val = reservation.end_date
+            # Wenn es Text ist -> Umwandeln
+            if isinstance(val, str):
+                dt_obj = datetime.strptime(val[:19], "%Y-%m-%d %H:%M:%S")
+            # Wenn es schon ein datetime-Objekt ist -> direkt nutzen
+            elif isinstance(val, datetime):
+                dt_obj = val
+            else:
+                # Fallback für reine date-Objekte
+                dt_obj = datetime.combine(val, datetime.min.time())
+                
+            if dt_obj < now:
                 reservation.delete()
+        
         cls.find_all_reservations()
-
-
-
-if __name__ == "__main__":
-    # Create a device
-    reservation_service = ReservationService()
-    print(reservation_service.find_all_reservations())
-    #print(reservation_service.create_reservation("two@mci.edu", "Device2", "2021-01-01 00:00:00", "2021-01-02 00:00:00"))
-    #print(reservation_service.create_reservation("one@mci.edu", "Device2", "2021-01-01 00:00:00", "2021-01-02 00:00:00"))
-    print(reservation_service.create_reservation("one@mci.edu", "Device2", "2021-02-01 00:00:00", "2021-02-02 00:00:00"))
