@@ -64,6 +64,11 @@ class ReservationService():
             raise ValueError("Das Enddatum muss nach dem Startdatum liegen.") # [cite: 98, 99]
 
         # Prüfung auf Konflikte (First-come-first-serve)
+
+        device = Device.find_by_attribute("id", device_id)
+        if device and device.status == "maintenance":
+            raise ValueError("Das Gerät befindet sich derzeit in Wartung und kann nicht reserviert werden.")
+        
         if cls.check_conflict(device_id, start_date, end_date):
             raise ValueError("Reservation conflict detected")
         

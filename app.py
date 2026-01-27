@@ -109,18 +109,19 @@ elif page == "Geräte-Verwaltung":
 
 
 
-#3. reservierungssystem
+# 3. Reservierungssystem
 elif page == "Reservierungssystem":
     st.header("📅 Reservierungssystem")
     
-    res_service=ReservationService()
-    res_service.clean_expired_reservations()s
+    res_service = ReservationService()
+    # Tippfehler korrigiert (das 's' am Ende entfernt)
+    res_service.clean_expired_reservations()
 
-    devices=Device.find_all()
-    users=User.find_all()
+    devices = Device.find_all()
+    users = User.find_all()
 
-    dev_list=[d.id for d in devices] if devices else []
-    user_list=[u.id for u in users] if users else []
+    dev_list = [d.id for d in devices] if devices else []
+    user_list = [u.id for u in users] if users else []
 
     if not dev_list or not user_list:
         st.warning("Bitte zuerst Nutzer und Geräte anlegen.")
@@ -130,62 +131,93 @@ elif page == "Reservierungssystem":
             selected_device = st.selectbox("Gerät auswählen", options=dev_list)
             selected_user = st.selectbox("Nutzer auswählen", options=user_list)
 
-            col1, col2 =st.columns(2)
-
-            start_date= col1.date_input("Startdatum")
-            start_time= col1.time_input("Startzeit", value=datetime.strptime("08:00", "%H:%M").time())
-            end_date= col2.date_input("Enddatum")
-            end_time= col2.time_input("Endzeit", value=datetime.strptime("17:00", "%H:%M").time())
+            col1, col2 = st.columns(2)
+            start_date = col1.date_input("Startdatum")
+            start_time = col1.time_input("Startzeit", value=datetime.strptime("08:00", "%H:%M").time())
+            end_date = col2.date_input("Enddatum")
+            end_time = col2.time_input("Endzeit", value=datetime.strptime("17:00", "%H:%M").time())
 
             if st.form_submit_button("Reservierung speichern"):
-
-                # Kombiniere Datum und Zeit zu datetime-Objekten
                 start_datetime = datetime.combine(start_date, start_time)
                 end_datetime = datetime.combine(end_date, end_time)
 
-                if end_datetime <= start_datetime:
-                    st.error("Das Enddatum/-zeit muss nach dem Startdatum/-zeit liegen.")
-                else:
-                    try:
-                        res_service.create_reservation(selected_user, selected_device, start_datetime, end_datetime)
-                        st.success(f"Reservierung für Gerät {selected_device} durch Nutzer {selected_user} gespeichert!")
-                    except ValueError as ve:
-                        st.error(f"Fehler bei der Reservierung: {ve}")
+                try:
+                    res_service.create_reservation(selected_user, selected_device, start_datetime, end_datetime)
+                    st.success(f"Reservierung für Gerät {selected_device} gespeichert!")
+                    st.rerun()
+                except ValueError as ve:
+                    st.error(f"Fehler: {ve}")
+
     st.divider()
     st.subheader("Aktuelle Reservierungen:")
-    all_reservations=res_service.find_all_reservations()
+    all_reservations = res_service.find_all_reservations()
 
     if all_reservations:
         for r in all_reservations:
-            st.write(f"- Gerät **{r.device_id}** reserviert von **{r.user_id}**: {r.start_date} bis {r.end_date}")
+            st.write(f"- Gerät **{r.device_id}**: {r.start_date} bis {r.end_date}")
             if st.button("Löschen", key=f"delete_res_{r.id}"):
                 r.delete()
-                st.success(f"Reservierung für Gerät {r.device_id} gelöscht!")
                 st.rerun()
-    else:
-        st.info("Noch keine Reservierungen vorhanden.")    
 
-
-
-
-#4. wartungs-management
+# 4. Wartungs-Management
 elif page == "Wartungs-Management":
     st.header("🛠️ Wartungs-Management")
     
     devices = Device.find_all()
     if devices:
-        # Teil A: Nächste Termine anzeigen [cite: 110]
-        st.subheader("Anstehende Wartungstermine")
-        for d in devices:
-            st.write(f"**{d.name}**: Nächste Wartung am {d.next_maintenance}")
-            
-        # Teil B: Quartalskosten 
-        st.subheader("Wartungskosten Planung")
-        year = st.selectbox("Jahr", [2024, 2025, 2026])
-        q = st.radio("Quartal auswählen", [1, 2, 3, 4], horizontal=True)
+        st.subheader("Anstehende Wartungen")
         
-        # Logik zur Berechnung (vereinfacht für die Anzeige)
-        # Hier könntest du d.get_maintenance_cost_for_period nutzen
-        st.metric(label=f"Gesamtkosten Q{q} {year}", value=f"1500.00 €")
+        cols = st.columns([2, 2, 2, 1])
+        cols[0].write("**Gerät**")
+        cols[1].write("**Verantwortlich**")
+        cols[2].write("**Nächster Termin**")
+        cols[3].write("**Aktion**")
+
+        for d in devices:
+            c1, c2, c3, c4 = st.columns([2, 2, 2, 1])
+            c1.write(d.name)
+            
+            #status anzeige
+            status_color="🔴" if d.status=="maintenance" else "🟢"
+            c2.write(f"{status_color} {d.status}")
+
+            # Datumsanzeige absichern
+            m_val = d.next_maintenance
+            if isinstance(m_val, str):
+                m_val = datetime.strptime(m_val[:10], "%Y-%m-%d")
+            
+            display_date = m_val.strftime("%d.%m.%Y") if m_val else "N/A"
+            c3.write(display_date)
+
+            if d.status!="maintenance":
+                if c4.button("Wartung starten", key=f"start_maint_{d.id}"):
+                    d.set_maintenance(True)
+                    st.success(f"Wartung für Gerät {d.name} gestartet.")
+                    st.rerun()
+            else:
+                if c4.button("Wartung beenden", key=f"end_maint_{d.id}"):
+                    d.set_maintenance(False)
+                    d.update_next_maintenance()
+                    st.success(f"Wartung für Gerät {d.name} beendet und Gerät wieder für die Reservierung freigegeben.")
+                    st.rerun()
+
+        st.divider()
+        st.subheader("Wartungskosten Planung")
+        col_y, col_q = st.columns(2)
+        year = col_y.selectbox("Jahr", [2024, 2025, 2026])
+        q = col_q.radio("Quartal", [1, 2, 3, 4], horizontal=True)
+
+        # Quartalsgrenzen definieren
+        quarters = {
+            1: (datetime(year, 1, 1), datetime(year, 3, 31, 23, 59)),
+            2: (datetime(year, 4, 1), datetime(year, 6, 30, 23, 59)),
+            3: (datetime(year, 7, 1), datetime(year, 9, 30, 23, 59)),
+            4: (datetime(year, 10, 1), datetime(year, 12, 31, 23, 59))
+        }
+        start_q, end_q = quarters[q]
+
+        # Berechnung über die Methode der Device-Klasse
+        total_cost = sum([d.get_maintenance_cost_for_period(start_q, end_q) for d in devices])
+        st.metric(label=f"Gesamtkosten Q{q} {year}", value=f"{total_cost:,.2f} €")
     else:
-        st.warning("Keine Geräte für die Wartungsplanung gefunden.")
+        st.info("Keine Geräte gefunden.")
